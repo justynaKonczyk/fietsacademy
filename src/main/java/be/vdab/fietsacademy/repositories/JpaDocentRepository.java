@@ -47,8 +47,7 @@ class JpaDocentRepository implements DocentRepository {
 
     @Override
     public List<Docent> findBySalaryBetween(BigDecimal van, BigDecimal tot) {
-        return manager.createQuery(
-                "select d from Docent d where d.wedde between :van and :tot", Docent.class)
+        return manager.createNamedQuery("Docent.findBySalaryBetween", Docent.class)
         .setParameter("van", van)
         .setParameter("tot", tot)
                 .getResultList();
