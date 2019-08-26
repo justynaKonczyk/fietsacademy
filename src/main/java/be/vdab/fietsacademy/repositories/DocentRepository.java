@@ -19,5 +19,6 @@ public interface DocentRepository {
     List<IdEnEmailAdres> findIdsEnEmailAdress();
     BigDecimal findHighestSalary();
     List<AmoutDocentenPerSalary> findAmoutDocentenPerSalary();
+    int algemeneOpslag(BigDecimal percentage);
 
 }
