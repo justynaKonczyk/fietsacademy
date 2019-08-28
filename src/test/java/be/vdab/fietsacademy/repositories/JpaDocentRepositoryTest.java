@@ -1,5 +1,7 @@
 package be.vdab.fietsacademy.repositories;
 
+import be.vdab.fietsacademy.domain.Adres;
+import be.vdab.fietsacademy.domain.Campus;
 import be.vdab.fietsacademy.domain.Docent;
 import be.vdab.fietsacademy.domain.Geslacht;
 import org.junit.Before;
@@ -24,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @RunWith(SpringRunner.class)
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Sql("/insertCampus.sql")
 @Sql("/insertDocent.sql")
 @Import(JpaDocentRepository.class)
 public class JpaDocentRepositoryTest
@@ -32,12 +35,14 @@ public class JpaDocentRepositoryTest
     private static final String DOCENTEN = "docenten";
 
     private Docent docent;
+    private Campus campus;
 
     @Before
-    public void before(){
-        docent = new Docent("test", "test", BigDecimal.TEN, "test@fietsacademy.be", Geslacht.MAN);
-        }
-
+    public void before() {
+        campus = new Campus("test", new Adres("test", "test", "test", "test"));
+        docent = new Docent("test", "test", BigDecimal.TEN, "test@fietsacademy.be", Geslacht.MAN); //, campus
+        campus.add(docent);
+    }
 
 
     @Autowired
@@ -57,7 +62,7 @@ public class JpaDocentRepositoryTest
     }
 
     @Test
-    public void delete(){
+    public void delete() {
         long id = idOfMale();
         repository.delete(id);
         manager.flush();
@@ -65,7 +70,7 @@ public class JpaDocentRepositoryTest
     }
 
     @Test
-    public void findBySalaryBetween(){
+    public void findBySalaryBetween() {
         BigDecimal duizend = BigDecimal.valueOf(1_000);
         BigDecimal tweeduizend = BigDecimal.valueOf(2_000);
 
@@ -77,16 +82,24 @@ public class JpaDocentRepositoryTest
     }
 
     @Test
-    public void findAll(){
+    public void findAll() {
         assertThat(repository.findAll()).hasSize(super.countRowsInTable(DOCENTEN))
-        .extracting(docent -> docent.getWedde()).isSorted();
+                .extracting(docent -> docent.getWedde()).isSorted();
     }
 
     @Test
-    public void create(){
+    public void create() {
+        manager.persist(campus);
         repository.create(docent);
+        manager.flush();
         assertThat(docent.getId()).isPositive();
         assertThat(super.countRowsInTableWhere(DOCENTEN, "id=" + docent.getId())).isOne();
+
+        assertThat(super.jdbcTemplate.queryForObject(
+                "select campusid from docenten where id=?", Long.class, docent.getId()))
+                .isEqualTo(campus.getId());
+
+        assertThat(campus.getDocenten()).contains(docent);
     }
 
     @Test
@@ -106,6 +119,7 @@ public class JpaDocentRepositoryTest
         assertThat(repository.findById(idOfMale()).get().getGeslacht())
                 .isEqualTo(Geslacht.MAN);
     }
+
     @Test
     public void female() {
         assertThat(repository.findById(idOfFemale()).get().getGeslacht())
@@ -122,31 +136,31 @@ public class JpaDocentRepositoryTest
     }
 
     @Test
-    public void findIdsEnEmailAdress(){
+    public void findIdsEnEmailAdress() {
         assertThat(repository.findIdsEnEmailAdress())
                 .hasSize(super.countRowsInTable(DOCENTEN));
     }
 
     @Test
-    public void findHighestSalary(){
+    public void findHighestSalary() {
         assertThat(repository.findHighestSalary()).isEqualByComparingTo(
                 super.jdbcTemplate.queryForObject("select max(wedde) from docenten",
                         BigDecimal.class));
     }
 
     @Test
-    public void finAmountDocentenPerSalary(){
+    public void finAmountDocentenPerSalary() {
         BigDecimal duizend = BigDecimal.valueOf(1_000);
         assertThat(repository.findAmoutDocentenPerSalary())
                 .hasSize(super.jdbcTemplate.queryForObject(
                         "select count(distinct wedde) from docenten", Integer.class))
-        .filteredOn(aantalPerWedde -> aantalPerWedde.getWedde().compareTo(duizend) == 0)
+                .filteredOn(aantalPerWedde -> aantalPerWedde.getWedde().compareTo(duizend) == 0)
                 .allSatisfy(aantalPerWedde -> assertThat(aantalPerWedde.getAantal())
-                .isEqualTo(super.countRowsInTableWhere(DOCENTEN, "wedde = 1000")));
+                        .isEqualTo(super.countRowsInTableWhere(DOCENTEN, "wedde = 1000")));
     }
 
     @Test
-    public void algemeneOpslag(){
+    public void algemeneOpslag() {
         assertThat(repository.algemeneOpslag(BigDecimal.TEN))
                 .isEqualTo(super.countRowsInTable(DOCENTEN));
         assertThat(super.jdbcTemplate.queryForObject(
@@ -154,6 +168,29 @@ public class JpaDocentRepositoryTest
                 idOfMale()))
                 .isEqualByComparingTo("1100");
     }
+
+    @Test
+    public void bijnamenLezen() {
+        assertThat(repository.findById(idOfMale()).get().getBijnamen())
+                .containsOnly("test");
+    }
+
+    @Test
+    public void addNickname() {
+        manager.persist(campus);
+        repository.create(docent);
+        docent.addBijnaam("test");
+        manager.flush();
+        assertThat(super.jdbcTemplate.queryForObject(
+                "select bijnaam from docentenbijnamen where docentid = ?", String.class, docent.getId()))
+                .isEqualTo("test");
+    }
+
+//    @Test
+//    public void campusLazyLoaded() {
+//        Docent docent = repository.findById(idOfMale()).get();
+//        assertThat(docent.getCampus().getNaam()).isEqualTo("test");
+//    }
 
 
 }

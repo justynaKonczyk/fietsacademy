@@ -2,6 +2,7 @@ package be.vdab.fietsacademy.repositories;
 
 import be.vdab.fietsacademy.domain.Adres;
 import be.vdab.fietsacademy.domain.Campus;
+import be.vdab.fietsacademy.domain.TelefoonNr;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -18,15 +19,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 @RunWith(SpringRunner.class)
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import(JpaCursusRepository.class)
+@Import(JpaCampusRepository.class)
 @Sql("/insertCampus.sql")
+@Sql("/insertDocent.sql")
 public class JpaCampusRepositoryTest
-extends AbstractTransactionalJUnit4SpringContextTests {
+        extends AbstractTransactionalJUnit4SpringContextTests {
 
     private static final String CAMPUSSEN = "campussen";
 
     @Autowired
     private JpaCampusRepository repository;
+
     private Campus campus;
 
     @Before
@@ -56,6 +59,19 @@ extends AbstractTransactionalJUnit4SpringContextTests {
         repository.create(campus);
         assertThat(super.countRowsInTableWhere(CAMPUSSEN,
                 "id=" + campus.getId())).isOne();
+    }
+
+    @Test
+    public void readTelefonNumber() {
+        assertThat(repository.findById(idVanTestCampus()).get().getTelefoonNrs())
+                .containsOnly(new TelefoonNr("1", false, "test"));
+    }
+
+    @Test
+    public void docentenLazyLoaded() {
+        assertThat(repository.findById(idVanTestCampus()).get().getDocenten())
+                .hasSize(2)
+                .first().extracting(docent -> docent.getVoornaam()).isEqualTo("testM");
     }
 }
 

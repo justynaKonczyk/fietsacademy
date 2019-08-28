@@ -2,6 +2,7 @@ package be.vdab.fietsacademy.domain;
 
 import javax.persistence.Embeddable;
 import java.io.Serializable;
+import java.util.Objects;
 
 @Embeddable
 public class Adres implements Serializable {
@@ -20,6 +21,22 @@ public class Adres implements Serializable {
     }
 
     protected Adres() {
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Adres)) return false;
+        Adres adres = (Adres) o;
+        return Objects.equals(straat, adres.straat) &&
+                Objects.equals(huisNr, adres.huisNr) &&
+                Objects.equals(postcode, adres.postcode) &&
+                Objects.equals(gemeente, adres.gemeente);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(straat, huisNr, postcode, gemeente);
     }
 
     public String getStraat() {
