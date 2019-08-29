@@ -20,5 +20,6 @@ public interface DocentRepository {
     BigDecimal findHighestSalary();
     List<AmoutDocentenPerSalary> findAmoutDocentenPerSalary();
     int algemeneOpslag(BigDecimal percentage);
+    Optional<Docent> findByIdWithLock(long id);
 
 }

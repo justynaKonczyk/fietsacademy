@@ -1,9 +1,6 @@
 package be.vdab.fietsacademy.repositories;
 
-import be.vdab.fietsacademy.domain.Adres;
-import be.vdab.fietsacademy.domain.Campus;
-import be.vdab.fietsacademy.domain.Docent;
-import be.vdab.fietsacademy.domain.Geslacht;
+import be.vdab.fietsacademy.domain.*;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -27,7 +24,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Sql("/insertCampus.sql")
+@Sql("/insertVerantwoordelijkheid.sql")
 @Sql("/insertDocent.sql")
+@Sql("/insertDocentVerantwoordelijkheid.sql")
 @Import(JpaDocentRepository.class)
 public class JpaDocentRepositoryTest
         extends AbstractTransactionalJUnit4SpringContextTests {
@@ -40,10 +39,9 @@ public class JpaDocentRepositoryTest
     @Before
     public void before() {
         campus = new Campus("test", new Adres("test", "test", "test", "test"));
-        docent = new Docent("test", "test", BigDecimal.TEN, "test@fietsacademy.be", Geslacht.MAN); //, campus
-        campus.add(docent);
+        docent = new Docent("test", "test", BigDecimal.TEN, "test@fietsacademy.be", Geslacht.MAN, campus); //
+//        campus.add(docent);
     }
-
 
     @Autowired
     private JpaDocentRepository repository;
@@ -62,6 +60,27 @@ public class JpaDocentRepositoryTest
     }
 
     @Test
+    public void readResposibility(){
+        assertThat(repository.findById(idOfMale()).get().getVerantwoordelijkheden())
+                .containsOnly(new Verantwoordelijkheid("test"));
+    }
+
+    @Test
+    public void addResposibility(){
+        Verantwoordelijkheid verantwoordelijkheid = new Verantwoordelijkheid("test2");
+        manager.persist(verantwoordelijkheid);
+        manager.persist(campus);
+        repository.create(docent);
+        docent.add(verantwoordelijkheid);
+        manager.flush();
+        assertThat(super.jdbcTemplate.queryForObject(
+                "select verantwoordelijkheidid from docentenverantwoordelijkheden " +
+                "where docentid=?", Long.class, docent.getId()).longValue())
+                .isEqualTo(verantwoordelijkheid.getId());
+    }
+
+
+    @Test
     public void delete() {
         long id = idOfMale();
         repository.delete(id);
@@ -75,10 +94,12 @@ public class JpaDocentRepositoryTest
         BigDecimal tweeduizend = BigDecimal.valueOf(2_000);
 
         List<Docent> docenten = repository.findBySalaryBetween(duizend, tweeduizend);
+
         assertThat(docenten).hasSize(
                 super.countRowsInTableWhere(DOCENTEN, "wedde between 1000 and 2000"))
                 .allSatisfy(
                         docent -> assertThat(docent.getWedde()).isBetween(duizend, tweeduizend));
+
     }
 
     @Test
@@ -186,11 +207,11 @@ public class JpaDocentRepositoryTest
                 .isEqualTo("test");
     }
 
-//    @Test
-//    public void campusLazyLoaded() {
-//        Docent docent = repository.findById(idOfMale()).get();
-//        assertThat(docent.getCampus().getNaam()).isEqualTo("test");
-//    }
+    @Test
+    public void campusLazyLoaded() {
+        Docent docent = repository.findById(idOfMale()).get();
+        assertThat(docent.getCampus().getNaam()).isEqualTo("test");
+    }
 
 
 }

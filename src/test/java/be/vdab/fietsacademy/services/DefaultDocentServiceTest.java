@@ -33,7 +33,7 @@ public class DefaultDocentServiceTest {
     public void before(){
         Campus campus = new Campus("test", new Adres("test","test","test","test"));
         docent = new Docent("test", "test", BigDecimal.valueOf(100),
-                "test@fiestacademy", Geslacht.MAN); //, campus
+                "test@fiestacademy", Geslacht.MAN, campus); //
         when(docentRepository.findById(1)).thenReturn(Optional.of(docent));
         when(docentRepository.findById(-1)).thenReturn(Optional.empty());
 

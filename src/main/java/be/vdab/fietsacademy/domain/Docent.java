@@ -7,6 +7,7 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
+import java.sql.Timestamp;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -16,9 +17,13 @@ import java.util.Set;
 @NamedQuery(name = "Docent.findBySalaryBetween",
         query = "select d from Docent d where d.wedde between :van and :tot" +
                 " order by d.wedde, d.id")
-public class Docent implements Serializable {
+@NamedEntityGraph(name = "Docent.MET_CAMPUS",
+        attributeNodes = @NamedAttributeNode("campus"))
 
+public class Docent implements Serializable {
     private static final long serialVersionUID = 1L;
+    public static final String MET_CAMPUS = "Docent.metCampus";
+
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -41,30 +46,52 @@ public class Docent implements Serializable {
     @Column(name = "bijnaam")
     private Set<String> bijnamen;
 
-//    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-//    @JoinColumn(name = "campusid")
-//    private Campus campus;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "campusid")
+    private Campus campus;
 
-//    public Campus getCampus() {
-//        return campus;
-//    }
-//
-//    public void setCampus(Campus campus) {
-//        this.campus = campus;
-//    }
+    @ManyToMany(mappedBy = "docenten")
+//    @JoinTable(
+//            name = "docentenverantwoordelijkheden",
+//            joinColumns = @JoinColumn(name="docentId"),
+//            inverseJoinColumns = @JoinColumn(name="verantwoordelijkheidId"))
+    private Set<Verantwoordelijkheid> verantwoordelijkheiden = new LinkedHashSet<>();
+
+    @Version
+    private Timestamp versie;
 
     protected Docent() {
     }
 
     public Docent(String voornaam, String familienaam,
-                  BigDecimal wedde, String emailAdres, Geslacht geslacht) { //,Campus campus
+                  BigDecimal wedde, String emailAdres, Geslacht geslacht, Campus campus) { //
         this.voornaam = voornaam;
         this.familienaam = familienaam;
         this.wedde = wedde;
         this.emailAdres = emailAdres;
         this.geslacht = geslacht;
         this.bijnamen = new LinkedHashSet<>();
-//        setCampus(campus);
+        setCampus(campus);
+    }
+
+    public boolean add(Verantwoordelijkheid verantwoordelijkheid) {
+        boolean toegevoegd = verantwoordelijkheiden.add(verantwoordelijkheid);
+        if (!verantwoordelijkheid.getDocenten().contains(this)) {
+            verantwoordelijkheid.add(this);
+        }
+        return toegevoegd;
+    }
+
+    public boolean remove(Verantwoordelijkheid verantwoordelijkheid) {
+        boolean verwijderd = verantwoordelijkheiden.remove(verantwoordelijkheid);
+        if (verantwoordelijkheid.getDocenten().contains(this)) {
+            verantwoordelijkheid.remove(this);
+        }
+        return verwijderd;
+    }
+
+    public Set<Verantwoordelijkheid> getVerantwoordelijkheden() {
+        return Collections.unmodifiableSet(verantwoordelijkheiden);
     }
 
     public void opslag(BigDecimal percentege) {
@@ -114,12 +141,23 @@ public class Docent implements Serializable {
         return geslacht;
     }
 
+    public Campus getCampus() {
+        return campus;
+    }
+
+    public void setCampus(Campus campus) {
+        if (!campus.getDocenten().contains(this)) {
+            campus.add(this);
+        }
+        this.campus = campus;
+    }
+
     @Override
-    public boolean equals(Object o){
-        if (! (o instanceof Docent)){
+    public boolean equals(Object o) {
+        if (!(o instanceof Docent)) {
             return false;
         }
-        if (emailAdres == null){
+        if (emailAdres == null) {
             return false;
         }
         return emailAdres.equalsIgnoreCase(((Docent) o).emailAdres);
